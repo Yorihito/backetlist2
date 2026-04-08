@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { BucketItemInput, DEFAULT_CATEGORIES, EmotionScore, UrgencyScore, calculatePriority, Priority, PRIORITY_LABELS } from '@/types';
+import { BucketItemQuizInput, DEFAULT_CATEGORIES, EmotionScore, UrgencyScore, calculatePriority, Priority, PRIORITY_LABELS } from '@/types';
 import { PriorityQuiz } from './PriorityQuiz';
 import { PriorityBadge } from '@/components/ui/PriorityBadge';
 
 interface Props {
   onClose: () => void;
-  onSubmit: (input: BucketItemInput) => Promise<void>;
+  onSubmit: (input: BucketItemQuizInput) => Promise<void>;
 }
 
 type Step = 1 | 2 | 3 | 4;

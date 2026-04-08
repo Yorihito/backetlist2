@@ -1,7 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from './useAuth';
-import { subscribeBucketItems, addBucketItem, updateBucketItem, deleteBucketItem } from '@/lib/firestore';
-import { BucketItem, BucketItemInput } from '@/types';
+import {
+  subscribeBucketItems,
+  addBucketItemFromQuiz,
+  addBucketItemFromTheme,
+  updateBucketItem,
+  deleteBucketItem,
+} from '@/lib/firestore';
+import { BucketItem, BucketItemQuizInput, BucketItemThemeInput } from '@/types';
 
 export function useBucketItems() {
   const { user } = useAuth();
@@ -25,13 +31,18 @@ export function useBucketItems() {
     return unsubscribe;
   }, [user]);
 
-  async function addItem(input: BucketItemInput) {
+  async function addFromQuiz(input: BucketItemQuizInput) {
     if (!user) return;
     try {
-      await addBucketItem(user.uid, input);
+      await addBucketItemFromQuiz(user.uid, input);
     } catch {
       setError('追加に失敗しました。もう一度お試しください。');
     }
+  }
+
+  async function addFromTheme(input: BucketItemThemeInput) {
+    if (!user) return;
+    await addBucketItemFromTheme(user.uid, input);
   }
 
   async function updateItem(
@@ -55,5 +66,5 @@ export function useBucketItems() {
     }
   }
 
-  return { items, loading, error, addItem, updateItem, deleteItem };
+  return { items, loading, error, addFromQuiz, addFromTheme, updateItem, deleteItem };
 }

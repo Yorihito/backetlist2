@@ -21,18 +21,31 @@ export interface BucketItem {
   description: string;
   categories: string[];
   priority: Priority;
-  emotionScore: EmotionScore;
-  urgencyScore: UrgencyScore;
+  /** 直接追加モーダルのクイズ経由で作られた場合のみ値あり */
+  emotionScore?: EmotionScore;
+  urgencyScore?: UrgencyScore;
+  /** テーマ由来のアイテムならテーマID、直接追加ならundefined */
+  sourceThemeId?: string;
   createdAt: Date;
   updatedAt: Date;
 }
 
-export interface BucketItemInput {
+/** 直接追加フロー（クイズ経由）の入力 */
+export interface BucketItemQuizInput {
   title: string;
   description: string;
   categories: string[];
   emotionScore: EmotionScore;
   urgencyScore: UrgencyScore;
+}
+
+/** テーマ経由の入力 */
+export interface BucketItemThemeInput {
+  title: string;
+  description?: string;
+  categories: string[];
+  priority: Priority;
+  sourceThemeId: string;
 }
 
 export function calculatePriority(emotionScore: EmotionScore, urgencyScore: UrgencyScore): Priority {
@@ -47,3 +60,16 @@ export const PRIORITY_LABELS: Record<Priority, string> = {
   medium: '中',
   low: '低',
 };
+
+// ===== テーマ進捗 =====
+
+export type ThemeStatus = 'not_started' | 'in_progress' | 'completed';
+
+export interface ThemeProgress {
+  themeId: string;
+  /** 質問ID → 回答テキスト */
+  answers: Record<string, string>;
+  status: ThemeStatus;
+  completedAt?: Date;
+  updatedAt: Date;
+}

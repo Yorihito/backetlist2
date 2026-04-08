@@ -5,10 +5,13 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/hooks/useAuth';
 import { useBucketItems } from '@/hooks/useBucketItems';
+import { useAllThemeProgress } from '@/hooks/useThemeProgress';
 import { signOut } from '@/lib/auth';
 import { BucketItemList } from '@/components/items/BucketItemList';
 import { AddItemModal } from '@/components/items/AddItemModal';
 import { CategoryFilter } from '@/components/ui/CategoryFilter';
+import { ThemeList } from '@/components/themes/ThemeList';
+import { THEMES } from '@/data/themes';
 import { Priority } from '@/types';
 
 const PRIORITY_FILTER_OPTIONS: { value: Priority | 'all'; label: string }[] = [
@@ -21,7 +24,8 @@ const PRIORITY_FILTER_OPTIONS: { value: Priority | 'all'; label: string }[] = [
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { items, loading: itemsLoading, error, addItem, updateItem, deleteItem } = useBucketItems();
+  const { items, loading: itemsLoading, error, addFromQuiz, updateItem, deleteItem } = useBucketItems();
+  const { progressMap } = useAllThemeProgress();
 
   const [showAdd, setShowAdd] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
@@ -60,6 +64,8 @@ export default function DashboardPage() {
     return matchCategory && matchPriority;
   });
 
+  const completedThemeCount = Array.from(progressMap.values()).filter((p) => p.status === 'completed').length;
+
   return (
     <div className="min-h-screen bg-background">
       {/* ヘッダー */}
@@ -87,7 +93,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-6">
+      <main className="max-w-2xl mx-auto px-4 py-6 flex flex-col gap-10">
         {/* エラー表示 */}
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm">
@@ -95,68 +101,99 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* 追加ボタン */}
-        <button
-          onClick={() => setShowAdd(true)}
-          className="w-full py-4 rounded-2xl border-2 border-dashed border-primary text-primary text-base font-medium hover:bg-green-50 transition-colors flex items-center justify-center gap-2"
-        >
-          <span className="text-xl leading-none">＋</span>
-          やりたいことを追加する
-        </button>
-
-        {/* フィルター */}
-        <div className="flex flex-col gap-3">
-          <div>
-            <p className="text-xs font-medium text-stone-400 mb-2 uppercase tracking-wide">カテゴリ</p>
-            <CategoryFilter selected={categoryFilter} onChange={setCategoryFilter} />
-          </div>
-          <div>
-            <p className="text-xs font-medium text-stone-400 mb-2 uppercase tracking-wide">重要度</p>
-            <div className="flex flex-wrap gap-2">
-              {PRIORITY_FILTER_OPTIONS.map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => setPriorityFilter(opt.value)}
-                  className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
-                    priorityFilter === opt.value
-                      ? 'bg-primary text-white border-primary'
-                      : 'bg-white text-stone-600 border-stone-200 hover:border-stone-400'
-                  }`}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* 件数表示 */}
-        {!itemsLoading && (
-          <p className="text-sm text-stone-400">
-            {filteredItems.length} 件
-            {(categoryFilter || priorityFilter !== 'all') && ` / 全 ${items.length} 件`}
+        {/* ようこそメッセージ */}
+        <section className="flex flex-col gap-2">
+          <h2 className="text-2xl font-bold text-text leading-snug">
+            {user.displayName ? `こんにちは、${user.displayName}さん` : 'ようこそ'}
+          </h2>
+          <p className="text-stone-500 leading-relaxed">
+            いくつかの質問に答えながら、これからやりたいことを一緒に見つけていきましょう。
           </p>
-        )}
+        </section>
 
-        {/* リスト */}
-        {itemsLoading ? (
-          <div className="flex justify-center py-16">
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+        {/* テーマセクション */}
+        <section className="flex flex-col gap-4">
+          <div className="flex items-end justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-text">考えてみるテーマ</h2>
+              <p className="text-sm text-stone-500 mt-0.5">
+                気になるテーマから始めてみましょう
+              </p>
+            </div>
+            <p className="text-sm text-stone-400 flex-shrink-0">
+              {completedThemeCount} / {THEMES.length} 完了
+            </p>
           </div>
-        ) : (
-          <BucketItemList
-            items={filteredItems}
-            onUpdate={updateItem}
-            onDelete={deleteItem}
-          />
-        )}
+          <ThemeList progressMap={progressMap} />
+        </section>
+
+        {/* マイバケットリスト */}
+        <section className="flex flex-col gap-4">
+          <div className="flex items-end justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-text">マイバケットリスト</h2>
+              <p className="text-sm text-stone-500 mt-0.5">これまでに集まったやりたいこと</p>
+            </div>
+            <button
+              onClick={() => setShowAdd(true)}
+              className="text-sm text-primary font-medium hover:underline flex-shrink-0"
+            >
+              ＋ 直接追加
+            </button>
+          </div>
+
+          {/* フィルター */}
+          {items.length > 0 && (
+            <div className="flex flex-col gap-3">
+              <div>
+                <p className="text-xs font-medium text-stone-400 mb-2 uppercase tracking-wide">カテゴリ</p>
+                <CategoryFilter selected={categoryFilter} onChange={setCategoryFilter} />
+              </div>
+              <div>
+                <p className="text-xs font-medium text-stone-400 mb-2 uppercase tracking-wide">重要度</p>
+                <div className="flex flex-wrap gap-2">
+                  {PRIORITY_FILTER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setPriorityFilter(opt.value)}
+                      className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
+                        priorityFilter === opt.value
+                          ? 'bg-primary text-white border-primary'
+                          : 'bg-white text-stone-600 border-stone-200 hover:border-stone-400'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="text-sm text-stone-400">
+                {filteredItems.length} 件
+                {(categoryFilter || priorityFilter !== 'all') && ` / 全 ${items.length} 件`}
+              </p>
+            </div>
+          )}
+
+          {/* リスト */}
+          {itemsLoading ? (
+            <div className="flex justify-center py-16">
+              <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <BucketItemList
+              items={filteredItems}
+              onUpdate={updateItem}
+              onDelete={deleteItem}
+            />
+          )}
+        </section>
       </main>
 
       {/* 追加モーダル */}
       {showAdd && (
         <AddItemModal
           onClose={() => setShowAdd(false)}
-          onSubmit={addItem}
+          onSubmit={addFromQuiz}
         />
       )}
     </div>
