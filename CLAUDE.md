@@ -48,7 +48,7 @@ const auth = getFirebaseAuth();
 
 ```
 Component
-  → useBucketItems / useAuth hook
+  → useBucketItems / useThemeProgress / useAuth hook
   → src/lib/firestore.ts / auth.ts  (calls getFirebaseDb() / getFirebaseAuth())
   → Firebase SDK  →  Cloud Firestore / Firebase Auth
 ```
@@ -61,10 +61,12 @@ Component
 |------|------|
 | `src/lib/firebase.ts` | Lazy Firebase init (`getFirebaseAuth`, `getFirebaseDb`) |
 | `src/lib/auth.ts` | `signInWithGoogle`, `signOut` |
-| `src/lib/firestore.ts` | `subscribeBucketItems`, `addBucketItem`, `updateBucketItem`, `deleteBucketItem` |
+| `src/lib/firestore.ts` | Firestore CRUD for `bucketItems` and `themeProgress` |
+| `src/data/themes.ts` | 7 hardcoded themes × 3 questions; `Theme`, `Question` types |
 | `src/context/AuthContext.tsx` | Global auth state via React context |
 | `src/hooks/useAuth.ts` | Thin wrapper around `AuthContext` |
-| `src/hooks/useBucketItems.ts` | CRUD + real-time Firestore listener |
+| `src/hooks/useBucketItems.ts` | CRUD + real-time listener; `addFromQuiz`, `addFromTheme` |
+| `src/hooks/useThemeProgress.ts` | `useThemeProgress` (single theme page), `useAllThemeProgress` (dashboard) |
 | `src/types/index.ts` | All shared types + `calculatePriority()` |
 
 ### Firestore Structure
@@ -72,28 +74,34 @@ Component
 ```
 users/{userId}
 users/{userId}/bucketItems/{itemId}
+users/{userId}/themeProgress/{themeId}
 ```
 
-`BucketItem` fields: `title`, `description`, `categories: string[]`, `priority: 'high'|'medium'|'low'`, `emotionScore: 1|2|3`, `urgencyScore: 1|2|3`, `createdAt`, `updatedAt`
+`BucketItem` fields: `title`, `description`, `categories: string[]`, `priority: 'high'|'medium'|'low'`, `emotionScore?: 1|2|3`, `urgencyScore?: 1|2|3`, `sourceThemeId?`, `createdAt`, `updatedAt`
 
-### Priority Auto-Setting Logic (`src/types/index.ts: calculatePriority`)
+`ThemeProgress` fields: `answers: Record<string, string>`, `status: 'in_progress'|'completed'`, `completedAt?`, `updatedAt`
 
+### Two Item Creation Paths
+
+**Theme flow** (`/themes/[themeId]`): User answers 3 questions per theme → review step → creates `DraftItem[]` with explicit priority → `addBucketItemFromTheme()`. No `emotionScore`/`urgencyScore`.
+
+**Direct add flow** (`AddItemModal` on dashboard): 4-step modal — title/description → category → `PriorityQuiz` (2 questions) → priority confirmation → `addBucketItemFromQuiz()`. Priority is auto-calculated:
 ```
 sum = emotionScore + urgencyScore
 sum >= 5 → high | sum >= 3 → medium | sum <= 2 → low
 ```
 
-### Add Item Flow (4-step modal)
+### Theme Page Architecture (`/themes/[themeId]`)
 
-`AddItemModal` has internal `step: 1|2|3|4` state:
-1. Title + description input
-2. Category multi-select
-3. `PriorityQuiz` (2 radio questions)
-4. Priority confirmation (auto-set, user can override)
+`page.tsx` is a server component with `generateStaticParams()` for all 7 theme IDs (required for `output: 'export'`). It renders `ThemePageClient` which owns:
+- `step` state: `0..(questions.length)` — last step is the review
+- `answers` state: saved to Firestore on each "next" as `in_progress`
+- `drafts` state: `DraftItem[]` for bucket list items to create on completion
+- `hydrated` flag: prevents flash — waits for `progressLoading` to resolve before rendering
 
 ### Firestore Security
 
-`firestore.rules` — each user can only access `users/{their-uid}/**`. Deploy whenever rules change:
+`firestore.rules` — each user can only access `users/{their-uid}/**` subcollections (`bucketItems`, `themeProgress`). Deploy whenever rules change:
 ```bash
 firebase deploy --only firestore:rules
 ```

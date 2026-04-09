@@ -1,6 +1,7 @@
 import { FirebaseApp, initializeApp, getApps } from 'firebase/app';
 import { Auth, getAuth } from 'firebase/auth';
 import { Firestore, getFirestore } from 'firebase/firestore';
+import { Functions, getFunctions } from 'firebase/functions';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -15,6 +16,7 @@ const firebaseConfig = {
 // These are called only from client-side code (useEffect / event handlers), never during SSR.
 let _auth: Auth | null = null;
 let _db: Firestore | null = null;
+let _functions: Functions | null = null;
 
 function getApp(): FirebaseApp {
   const apps = getApps();
@@ -33,4 +35,11 @@ export function getFirebaseDb(): Firestore {
     _db = getFirestore(getApp());
   }
   return _db;
+}
+
+export function getFirebaseFunctions(): Functions {
+  if (!_functions) {
+    _functions = getFunctions(getApp(), 'asia-northeast1');
+  }
+  return _functions;
 }
