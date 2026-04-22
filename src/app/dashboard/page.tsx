@@ -21,15 +21,24 @@ const PRIORITY_FILTER_OPTIONS: { value: Priority | 'all'; label: string }[] = [
   { value: 'low', label: '低' },
 ];
 
+type CompletionFilter = 'all' | 'pending' | 'completed';
+
+const COMPLETION_FILTER_OPTIONS: { value: CompletionFilter; label: string }[] = [
+  { value: 'all', label: 'すべて' },
+  { value: 'pending', label: '未達成' },
+  { value: 'completed', label: '達成済み' },
+];
+
 export default function DashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { items, loading: itemsLoading, error, addFromQuiz, updateItem, deleteItem } = useBucketItems();
+  const { items, loading: itemsLoading, error, addFromQuiz, updateItem, deleteItem, completeItem, uncompleteItem } = useBucketItems();
   const { progressMap } = useAllThemeProgress();
 
   const [showAdd, setShowAdd] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<Priority | 'all'>('all');
+  const [completionFilter, setCompletionFilter] = useState<CompletionFilter>('all');
   const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
@@ -58,13 +67,21 @@ export default function DashboardPage() {
 
   if (!user) return null;
 
+  const completedCount = items.filter((item) => !!item.completedAt).length;
+
   const filteredItems = items.filter((item) => {
     const matchCategory = !categoryFilter || item.categories.includes(categoryFilter);
     const matchPriority = priorityFilter === 'all' || item.priority === priorityFilter;
-    return matchCategory && matchPriority;
+    const matchCompletion =
+      completionFilter === 'all' ||
+      (completionFilter === 'completed' && !!item.completedAt) ||
+      (completionFilter === 'pending' && !item.completedAt);
+    return matchCategory && matchPriority && matchCompletion;
   });
 
   const completedThemeCount = Array.from(progressMap.values()).filter((p) => p.status === 'completed').length;
+
+  const hasActiveFilter = !!(categoryFilter || priorityFilter !== 'all' || completionFilter !== 'all');
 
   return (
     <div className="min-h-screen bg-background">
@@ -111,6 +128,26 @@ export default function DashboardPage() {
           </p>
         </section>
 
+        {/* 達成状況サマリー */}
+        {items.length > 0 && (
+          <section className="bg-white rounded-2xl border border-stone-100 p-5 shadow-sm">
+            <h2 className="text-sm font-medium text-stone-500 mb-3">達成状況</h2>
+            <div className="flex items-end gap-2 mb-3">
+              <span className="text-4xl font-bold text-primary">{completedCount}</span>
+              <span className="text-stone-400 text-lg mb-1">/ {items.length} 件達成</span>
+            </div>
+            <div className="w-full bg-stone-100 rounded-full h-2.5 overflow-hidden">
+              <div
+                className="bg-primary h-2.5 rounded-full transition-all duration-500"
+                style={{ width: items.length > 0 ? `${Math.round((completedCount / items.length) * 100)}%` : '0%' }}
+              />
+            </div>
+            <p className="text-xs text-stone-400 mt-2 text-right">
+              {items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0}% 完了
+            </p>
+          </section>
+        )}
+
         {/* テーマセクション */}
         <section className="flex flex-col gap-4">
           <div className="flex items-end justify-between">
@@ -146,6 +183,24 @@ export default function DashboardPage() {
           {items.length > 0 && (
             <div className="flex flex-col gap-3">
               <div>
+                <p className="text-xs font-medium text-stone-400 mb-2 uppercase tracking-wide">達成状況</p>
+                <div className="flex flex-wrap gap-2">
+                  {COMPLETION_FILTER_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      onClick={() => setCompletionFilter(opt.value)}
+                      className={`text-sm px-3 py-1.5 rounded-full border transition-colors ${
+                        completionFilter === opt.value
+                          ? 'bg-primary text-white border-primary'
+                          : 'bg-white text-stone-600 border-stone-200 hover:border-stone-400'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
                 <p className="text-xs font-medium text-stone-400 mb-2 uppercase tracking-wide">カテゴリ</p>
                 <CategoryFilter selected={categoryFilter} onChange={setCategoryFilter} />
               </div>
@@ -169,7 +224,7 @@ export default function DashboardPage() {
               </div>
               <p className="text-sm text-stone-400">
                 {filteredItems.length} 件
-                {(categoryFilter || priorityFilter !== 'all') && ` / 全 ${items.length} 件`}
+                {hasActiveFilter && ` / 全 ${items.length} 件`}
               </p>
             </div>
           )}
@@ -184,6 +239,8 @@ export default function DashboardPage() {
               items={filteredItems}
               onUpdate={updateItem}
               onDelete={deleteItem}
+              onComplete={completeItem}
+              onUncomplete={uncompleteItem}
             />
           )}
         </section>

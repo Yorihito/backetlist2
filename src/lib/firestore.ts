@@ -10,6 +10,7 @@ import {
   query,
   orderBy,
   Timestamp,
+  deleteField,
 } from 'firebase/firestore';
 import { getFirebaseDb } from './firebase';
 import {
@@ -47,6 +48,7 @@ export function subscribeBucketItems(
         emotionScore: data.emotionScore,
         urgencyScore: data.urgencyScore,
         sourceThemeId: data.sourceThemeId,
+        completedAt: (data.completedAt as Timestamp | undefined)?.toDate(),
         createdAt: (data.createdAt as Timestamp)?.toDate() ?? new Date(),
         updatedAt: (data.updatedAt as Timestamp)?.toDate() ?? new Date(),
       };
@@ -92,6 +94,20 @@ export async function updateBucketItem(
 
 export async function deleteBucketItem(userId: string, itemId: string) {
   await deleteDoc(itemRef(userId, itemId));
+}
+
+export async function completeBucketItem(userId: string, itemId: string) {
+  await updateDoc(itemRef(userId, itemId), {
+    completedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
+export async function uncompleteBucketItem(userId: string, itemId: string) {
+  await updateDoc(itemRef(userId, itemId), {
+    completedAt: deleteField(),
+    updatedAt: serverTimestamp(),
+  });
 }
 
 // ===== ThemeProgress =====

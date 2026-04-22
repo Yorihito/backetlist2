@@ -7,9 +7,11 @@ interface Props {
   items: BucketItem[];
   onUpdate: (itemId: string, updates: Partial<Pick<BucketItem, 'title' | 'description' | 'categories' | 'priority'>>) => Promise<void>;
   onDelete: (itemId: string) => Promise<void>;
+  onComplete: (itemId: string) => Promise<void>;
+  onUncomplete: (itemId: string) => Promise<void>;
 }
 
-export function BucketItemList({ items, onUpdate, onDelete }: Props) {
+export function BucketItemList({ items, onUpdate, onDelete, onComplete, onUncomplete }: Props) {
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -28,6 +30,8 @@ export function BucketItemList({ items, onUpdate, onDelete }: Props) {
           item={item}
           onUpdate={(updates) => onUpdate(item.id, updates)}
           onDelete={() => onDelete(item.id)}
+          onComplete={() => onComplete(item.id)}
+          onUncomplete={() => onUncomplete(item.id)}
         />
       ))}
     </div>

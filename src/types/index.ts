@@ -26,6 +26,8 @@ export interface BucketItem {
   urgencyScore?: UrgencyScore;
   /** テーマ由来のアイテムならテーマID、直接追加ならundefined */
   sourceThemeId?: string;
+  /** 達成日時。未設定なら未達成 */
+  completedAt?: Date;
   createdAt: Date;
   updatedAt: Date;
 }
