@@ -6,6 +6,8 @@ import {
   addBucketItemFromTheme,
   updateBucketItem,
   deleteBucketItem,
+  completeBucketItem,
+  uncompleteBucketItem,
 } from '@/lib/firestore';
 import { BucketItem, BucketItemQuizInput, BucketItemThemeInput } from '@/types';
 
@@ -66,5 +68,23 @@ export function useBucketItems() {
     }
   }
 
-  return { items, loading, error, addFromQuiz, addFromTheme, updateItem, deleteItem };
+  async function completeItem(itemId: string) {
+    if (!user) return;
+    try {
+      await completeBucketItem(user.uid, itemId);
+    } catch {
+      setError('達成状態の更新に失敗しました。もう一度お試しください。');
+    }
+  }
+
+  async function uncompleteItem(itemId: string) {
+    if (!user) return;
+    try {
+      await uncompleteBucketItem(user.uid, itemId);
+    } catch {
+      setError('達成状態の更新に失敗しました。もう一度お試しください。');
+    }
+  }
+
+  return { items, loading, error, addFromQuiz, addFromTheme, updateItem, deleteItem, completeItem, uncompleteItem };
 }
