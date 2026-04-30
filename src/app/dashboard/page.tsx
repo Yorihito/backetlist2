@@ -12,7 +12,7 @@ import { AddItemModal } from '@/components/items/AddItemModal';
 import { CategoryFilter } from '@/components/ui/CategoryFilter';
 import { ThemeList } from '@/components/themes/ThemeList';
 import { THEMES } from '@/data/themes';
-import { Priority } from '@/types';
+import { Priority, BucketItem } from '@/types';
 
 const PRIORITY_FILTER_OPTIONS: { value: Priority | 'all'; label: string }[] = [
   { value: 'all', label: 'すべて' },
@@ -22,6 +22,28 @@ const PRIORITY_FILTER_OPTIONS: { value: Priority | 'all'; label: string }[] = [
 ];
 
 type CompletionFilter = 'all' | 'pending' | 'completed';
+
+type SortKey = 'createdAt_desc' | 'createdAt_asc' | 'priority_desc' | 'priority_asc';
+
+const SORT_OPTIONS: { value: SortKey; label: string }[] = [
+  { value: 'createdAt_desc', label: '追加日（新しい順）' },
+  { value: 'createdAt_asc', label: '追加日（古い順）' },
+  { value: 'priority_desc', label: '重要度（高い順）' },
+  { value: 'priority_asc', label: '重要度（低い順）' },
+];
+
+const PRIORITY_ORDER: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
+
+function sortItems(items: BucketItem[], key: SortKey): BucketItem[] {
+  return [...items].sort((a, b) => {
+    switch (key) {
+      case 'createdAt_desc': return b.createdAt.getTime() - a.createdAt.getTime();
+      case 'createdAt_asc':  return a.createdAt.getTime() - b.createdAt.getTime();
+      case 'priority_desc':  return PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority];
+      case 'priority_asc':   return PRIORITY_ORDER[b.priority] - PRIORITY_ORDER[a.priority];
+    }
+  });
+}
 
 const COMPLETION_FILTER_OPTIONS: { value: CompletionFilter; label: string }[] = [
   { value: 'all', label: 'すべて' },
@@ -39,6 +61,7 @@ export default function DashboardPage() {
   const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
   const [priorityFilter, setPriorityFilter] = useState<Priority | 'all'>('all');
   const [completionFilter, setCompletionFilter] = useState<CompletionFilter>('all');
+  const [sortKey, setSortKey] = useState<SortKey>('createdAt_desc');
   const [signingOut, setSigningOut] = useState(false);
 
   useEffect(() => {
@@ -69,15 +92,18 @@ export default function DashboardPage() {
 
   const completedCount = items.filter((item) => !!item.completedAt).length;
 
-  const filteredItems = items.filter((item) => {
-    const matchCategory = !categoryFilter || item.categories.includes(categoryFilter);
-    const matchPriority = priorityFilter === 'all' || item.priority === priorityFilter;
-    const matchCompletion =
-      completionFilter === 'all' ||
-      (completionFilter === 'completed' && !!item.completedAt) ||
-      (completionFilter === 'pending' && !item.completedAt);
-    return matchCategory && matchPriority && matchCompletion;
-  });
+  const filteredItems = sortItems(
+    items.filter((item) => {
+      const matchCategory = !categoryFilter || item.categories.includes(categoryFilter);
+      const matchPriority = priorityFilter === 'all' || item.priority === priorityFilter;
+      const matchCompletion =
+        completionFilter === 'all' ||
+        (completionFilter === 'completed' && !!item.completedAt) ||
+        (completionFilter === 'pending' && !item.completedAt);
+      return matchCategory && matchPriority && matchCompletion;
+    }),
+    sortKey,
+  );
 
   const completedThemeCount = Array.from(progressMap.values()).filter((p) => p.status === 'completed').length;
 
@@ -221,6 +247,18 @@ export default function DashboardPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+              <div>
+                <p className="text-xs font-medium text-stone-400 mb-2 uppercase tracking-wide">並び順</p>
+                <select
+                  value={sortKey}
+                  onChange={(e) => setSortKey(e.target.value as SortKey)}
+                  className="text-sm px-3 py-1.5 rounded-full border border-stone-200 bg-white text-stone-600 hover:border-stone-400 transition-colors"
+                >
+                  {SORT_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
               </div>
               <p className="text-sm text-stone-400">
                 {filteredItems.length} 件
